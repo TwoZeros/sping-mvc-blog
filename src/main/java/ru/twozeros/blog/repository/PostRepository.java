@@ -21,11 +21,14 @@ public class PostRepository {
     }
 
     public List<Post> all() {
-        return new ArrayList<>(postConcurrentHashMap.values());
+        return postConcurrentHashMap.values().stream()
+                .filter( i -> !i.isRemoved())
+                .toList();
     }
 
     public Optional<Post> getById(long id) {
-        if (postConcurrentHashMap.containsKey(id)) {
+        if (postConcurrentHashMap.containsKey(id)
+            && !postConcurrentHashMap.get(id).isRemoved()) {
             return Optional.of(postConcurrentHashMap.get(id));
         } else {
             return Optional.empty();
@@ -38,7 +41,8 @@ public class PostRepository {
             post.setId(primaryKey.incrementAndGet());
             postConcurrentHashMap.put(post.getId(), post);
             return post;
-        } else if (!postConcurrentHashMap.containsKey(id)) {
+        } else if (!postConcurrentHashMap.containsKey(id) ||
+                    postConcurrentHashMap.get(id).isRemoved()) {
             throw new NotFoundException("Пост с Id " + post.getId() + "не найден");
         } else {
             postConcurrentHashMap.put(id, post);
@@ -50,6 +54,11 @@ public class PostRepository {
       if (!postConcurrentHashMap.containsKey(id)) {
         throw new NotFoundException("Пост с Id " + id + "не существует или уже удалён");
       }
-      postConcurrentHashMap.remove(id);
+      Post post = postConcurrentHashMap.get(id);
+      if(post.isRemoved()) {
+          throw new NotFoundException("Пост с Id " + id + "не существует или уже удалён");
+      } else {
+          post.setRemoved(true);
+      }
     }
 }
